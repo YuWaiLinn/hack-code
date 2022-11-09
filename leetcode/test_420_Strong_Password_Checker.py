@@ -20,70 +20,43 @@ class Solution(object):
         def rule2(password):
             # It does not contain three repeating characters in a row (i.e., "...aaa..." is weak, but "...aa...a..." is strong, assuming other conditions are met).
             count = 0
-            undeletable1 = 0
-            undeletable2 = 0
+            replaceable_by_2 = 0
+            replaceable_by_3 = 0
             i = 0
             while i < pass_len:
                 pc = password[i]
                 repeating = pc + pc + pc
                 if password[i:i+3] == repeating:
                     if i+4 < pass_len and password[i+3: i+5] == pc + pc:
-                        undeletable2 += 1
+                        replaceable_by_3 += 1
                     elif i+3 < pass_len and password[i+3] == pc:
-                        undeletable1 += 1
+                        replaceable_by_2 += 1
                     count += 1
                     i += 3
                 else:
                     i += 1
 
-            return count, undeletable1, undeletable2
+            return count, replaceable_by_2, replaceable_by_3
 
         rule1_res = rule1(password)
-        rule2_res, undeletable1, undeletable2 = rule2(password)
-        res1 = rule1_res > 0
-        res2 = rule2_res > 0
+        rule2_res, replaceable_by_2, replaceable_by_3 = rule2(password)
 
         # It has at least 6 characters and at most 20 characters.
-        add = 0
-        delete = 0
-        if pass_len < 6:
-            add = 6 - pass_len
-        if pass_len > 20:
-            delete = pass_len - 20
-        must_change1 = 0
-        must_change2 = 0
+        add = max(6 - pass_len, 0)
+        delete = max(pass_len - 20, 0)
+        must_change1 = max(rule1_res - add, 0)
 
-        # add, change
-        if res1:
-            if(rule1_res > add):
-                must_change1 = rule1_res - add
-
-        # add, delete(optional), change
-        if res2:
-            can_overwrite = add + must_change1
-            deletable = rule2_res - (undeletable1 + undeletable2)
-
-            if delete < deletable:
-                can_overwrite += delete
-            else:
-                can_overwrite += deletable
-
-                can_overwrite_x = 0
-                if undeletable1:
-                    can_overwrite_x = min(undeletable1, ((delete - deletable)//2))
-                    if can_overwrite_x > 0:
-                        can_overwrite += can_overwrite_x
-
-                if undeletable2:
-                    can_overwrite_x = min(undeletable2, ((delete - deletable - (can_overwrite_x * 2))//3))
-                    if can_overwrite_x > 0:
-                        can_overwrite += can_overwrite_x
-
-            if rule2_res > can_overwrite:
-                must_change2 = rule2_res - can_overwrite
+        # replaceable by : add, delete(optional), change
+        # replace by del
+        replaceable_by_del = min(delete, (rule2_res - (replaceable_by_2 + replaceable_by_3)))
+        remian_delete = max(delete - replaceable_by_del, 0)
+        replaceable_by_del_1 = min(delete, min(remian_delete // 2, replaceable_by_2))
+        remian_delete =  max(remian_delete - (replaceable_by_del_1 * 2), 0)
+        replaceable_by_del += replaceable_by_del_1
+        replaceable_by_del = min(delete, replaceable_by_del + min((remian_delete // 3, replaceable_by_3)))
+        must_change2 = max(rule2_res - add - must_change1 - replaceable_by_del, 0)
 
         return add + delete + must_change1 + must_change2
-
 
 class TestMethods(unittest.TestCase):
     def test_1(self):
